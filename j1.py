@@ -45,7 +45,7 @@ class J1(wiring.Component):
         # return stack write value
         self.rstkD = Signal(J1.WIDTH)
 
-        self.reboot = Signal()
+        self.reboot = Signal(1, init=1)
 
         m.d.comb += [
             self.mem_addr.eq(self.st0[0:16]),
@@ -67,6 +67,9 @@ class J1(wiring.Component):
             m.d.comb += self.signedless.eq(self.st1[15])
         with m.Else():
             m.d.comb += self.signedless.eq(self.minus[16])
+
+        mze = Signal() # minus==0 sign-extended
+        me = Signal() # minus sign-extended
 
         with m.Switch(Cat(self.insn[8:16], self.pc[12])):
             with m.Case('1 --- -----'):
@@ -95,14 +98,17 @@ class J1(wiring.Component):
                 m.d.comb += self.st0N.eq(~self.st0)
 
             with m.Case('0 011 -0111'): #  =
-                m.d.comb += self.st0N.eq({`WIDTH{(minus == 0)}})
+                m.d.comb += [
+                    mze.eq(self.minus==0),
+                    self.st0N.eq(mze.replicate(J1.WIDTH))
+                ]
             with m.Case('0 011 -1000'): #  <
-                m.d.comb += self.st0N.eq({`WIDTH{(signedless)}})
+                m.d.comb += self.st0N.eq(self.signedless.replicate(J1.WIDTH))
 
             with m.Case('0 011 -1001'):
-                m.d.comb += self.st0N.eq({st0[`WIDTH - 1], st0[`WIDTH - 1:1]})
+                m.d.comb += self.st0N.eq(Cat(self.st0[1:J1.WIDTH], self.st0[J1.WIDTH-1]))
             with m.Case('0 011 -1010'):
-                m.d.comb += self.st0N.eq({st0[`WIDTH - 2:0], 1'b0})
+                m.d.comb += self.st0N.eq(Cat(C(0,1), self.st0[0:J1.WIDTH-1]))
             with m.Case('0 011 -1011'):
                 m.d.comb += self.st0N.eq(self.rst0)
             with m.Case('0 011 -1100'):
@@ -110,11 +116,15 @@ class J1(wiring.Component):
             with m.Case('0 011 -1101'):
                 m.d.comb += self.st0N.eq(self.io_din)
             with m.Case('0 011 -1110'):
-                m.d.comb += self.st0N.eq({{(`WIDTH - 4){1'b0}}, self.dsp})
+                m.d.comb += self.st0N.eq(Cat(self.dsp, C(0, J1.WIDTH-4)))
             with m.Case('0 011 -1111'): # u<
-                m.d.comb += self.st0N.eq({`WIDTH{(self.minus[16])}})
+                m.d.comb += [
+                    me.eq(self.minus[16]),
+                    self.st0N.eq(me.replicate(J1.WIDTH))
+                ]
             with m.Default():
-                m.d.comb += self.st0N.eq({`WIDTH{1'bx}})
+                # st0N = {`WIDTH{1'bx}};
+                m.d.comb += self.st0N.eq(0)
 
 
         m.d.sync += self.pc.eq(self.pc_plus_1)
