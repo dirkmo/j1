@@ -127,6 +127,23 @@ class J1(wiring.Component):
                 m.d.comb += self.st0N.eq(0)
 
 
+        func_T_R = Signal()
+        m.d.comb += func_T_R.eq(self.insn[6:4] == 2)
+        func_write = Signal()
+        m.d.comb += func_write.eq(self.insn[6:4] == 3)
+        func_iow = Signal()
+        m.d.comb += func_iow.eq(self.insn[6:4] == 4)
+        func_ior = Signal()
+        m.d.comb += func_ior.eq(self.insn[6:4] == 5)
+
+        wire is_alu = !pc[12] & (insn[15:13] == 3'b011);
+        assign mem_wr = !reboot & is_alu & func_write;
+        assign dout = st1;
+        assign io_wr = !reboot & is_alu & func_iow;
+        assign io_rd = !reboot & is_alu & func_ior;
+
+
+
         m.d.sync += self.pc.eq(self.pc_plus_1)
         return m
 
