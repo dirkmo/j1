@@ -23,6 +23,13 @@ class J1(wiring.Component):
         self.code_addr = Signal(13)
         self.insn = Signal(16)
 
+    def stack(self, m, ra, rd, we, wa, wd):
+        st = Array(Signal(J1.WIDTH) for _ in range(2**J1.DEPTH))
+        with m.If(we):
+            m.d.sync += st[wa].eq(wd)
+        m.d.comb += rd.eq(st[ra])
+        return st
+
     def elaborate(self, platform):
         m = Module()
 
@@ -57,12 +64,9 @@ class J1(wiring.Component):
         rst0 = Signal(J1.WIDTH)
         dspI = Signal(2)
         rspI = Signal(2)
-        # stack2 #(.DEPTH(15)) dstack(.clk(clk), .rd(st1),  .we(dstkW), .wd(st0),   .delta(dspI));
-        # stack2 #(.DEPTH(17)) rstack(.clk(clk), .rd(rst0), .we(rstkW), .wd(rstkD), .delta(rspI));
 
-        # TODO:
-        dstack = Array(Signal(J1.WIDTH) for _ in range(2**J1.DEPTH))
-        rstack = Array(Signal(J1.WIDTH) for _ in range(2**J1.DEPTH))
+        dstack = self.stack(m, ra=dsp, rd=st1, we=dstkW, wa=dspN, wd=st0)
+        rstack = self.stack(m, ra=rsp, rd=rst0, we=rstkW, wa=rspN, wd=rstkD)
 
         st1_signed = Signal(signed(J1.WIDTH))
         st0_signed = Signal(signed(J1.WIDTH))
