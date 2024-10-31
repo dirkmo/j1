@@ -62,8 +62,6 @@ class J1(wiring.Component):
         # The D and R stacks
         st1 = Signal(J1.WIDTH)
         rst0 = Signal(J1.WIDTH)
-        dspI = Signal(2)
-        rspI = Signal(2)
 
         dstack = self.stack(m, ra=dsp, rd=st1, we=dstkW, wa=dspN, wd=st0)
         rstack = self.stack(m, ra=rsp, rd=rst0, we=rstkW, wa=rspN, wd=rstkD)
