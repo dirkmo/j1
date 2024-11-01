@@ -1,0 +1,5 @@
+set -e
+
+mkdir -p firmware/
+gforth cross.fs basewords.fs nuc.fs
+python dump.py firmware/nuc.hex
