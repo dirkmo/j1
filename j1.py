@@ -189,7 +189,7 @@ def main():
     sim.add_clock(Period(MHz=1))
     sim.reset()
 
-    prog = [0, 1, 2]
+    prog = [ 0x8000 + i for i in range(0,10)]
 
     async def bench(ctx):
         for _ in range(10):
