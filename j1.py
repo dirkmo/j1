@@ -130,10 +130,9 @@ class J1(wiring.Component):
         ]
 
         is_alu = Signal()
-        mem_wr = Signal()
         m.d.comb += [
             is_alu.eq(self.insn[13:16] == 0b011),
-            mem_wr.eq(~reboot & is_alu & func_write),
+            self.mem_wr.eq(~reboot & is_alu & func_write),
             self.dout.eq(st1),
             self.io_wr.eq(~reboot & is_alu & func_iow),
             self.io_rd.eq(~reboot & is_alu & func_ior)
@@ -169,30 +168,39 @@ class J1(wiring.Component):
             with m.Case("0 000 - -",
                         "0 010 - -",
                         "0 001 - 0"): m.d.comb += pcN.eq(self.insn[0:13])
-            with m.Case("0 --- - -",
-                        "0 011 1 -"): m.d.comb += pcN.eq(rst0[1:14])
+            with m.Case("0 011 1 -"): m.d.comb += pcN.eq(rst0[1:14])
             with m.Default():         m.d.comb += pcN.eq(pc_plus_1)
 
         m.d.sync += [
-            pc.eq(pc_plus_1),
+            pc.eq(pcN),
             dsp.eq(dspN),
             st0.eq(st0N),
-            rsp.eq(rspN)
+            rsp.eq(rspN),
+            reboot.eq(0),
         ]
 
         return m
 
 
-async def bench(ctx):
-    await ctx.tick()
 
 def main():
     dut = J1()
     sim = Simulator(dut)
     sim.add_clock(Period(MHz=1))
     sim.reset()
+
+    prog = [0, 1, 2]
+
+    async def bench(ctx):
+        for _ in range(10):
+            code_addr = ctx.get(dut.code_addr)
+            ctx.set(dut.insn, prog[code_addr])
+            ctx.set(dut.mem_din, 0xffff)
+            ctx.set(dut.io_din, 0xffff)
+            await ctx.tick()
+
     sim.add_testbench(bench)
-    with sim.write_vcd("j1.vcd", gtkw_file="j1.gtkw", traces=[]):
+    with sim.write_vcd("j1.vcd", gtkw_file="j1.gtkw", traces=[dut.io_rd, dut.io_wr, dut.mem_addr, dut.mem_wr, dut.dout, dut.mem_din, dut.io_din, dut.code_addr, dut.insn]):
         sim.run()
 
 if __name__ == "__main__":
